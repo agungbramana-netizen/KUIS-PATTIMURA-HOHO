@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Kuis Perlawanan Pattimura (1817)</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+      --card-bg: rgba(255, 255, 255, 0.07);
+      --card-border: rgba(255, 255, 255, 0.18);
+      --gold-primary: #f1c40f;
+      --gold-hover: #d4ac0d;
+      --red-accent: #e74c3c;
+      --green-accent: #2ecc71;
+      --blue-accent: #3498db;
+      --text-main: #ffffff;
+      --text-sub: #e0e6ed;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    .game-container {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.05);
+      width: 100%;
+      max-width: 550px;
+      padding: 25px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Canvas for Confetti Fireworks */
+    #effectsCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 15px;
+    }
+
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .lives-icon {
+      color: var(--red-accent);
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+    }
+
+    .combo-badge {
+      background: linear-gradient(45deg, #e67e22, #f1c40f);
+      color: #000;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.4);
+      display: none;
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-bottom: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--green-accent);
+      transition: width 0.1s linear, background-color 0.4s ease;
+    }
+
+    /* Lifelines Section */
+    .lifelines-container {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .lifeline-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .lifeline-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .lifeline-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: transparent;
+    }
+
+    .question-box {
+      font-size: 1.1rem;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .btn-option {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 14px 18px;
+      color: var(--text-sub);
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-option:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: var(--gold-primary);
+      color: #fff;
+      transform: translateX(4px);
+    }
+
+    .btn-option.correct {
+      background: rgba(46, 204, 113, 0.3) !important;
+      border-color: var(--green-accent) !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+    }
+
+    .btn-option.wrong {
+      background: rgba(231, 76, 60, 0.3) !important;
+      border-color: var(--red-accent) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-option:disabled {
+      cursor: default;
+    }
+
+    .action-btn {
+      width: 100%;
+      background: linear-gradient(45deg, var(--gold-primary), var(--gold-hover));
+      color: #0d1b2a;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: none;
+      box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3);
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(241, 196, 15, 0.5);
+    }
+
+    /* Screens (Start & Result) */
+    .screen {
+      display: none;
+      text-align: center;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .title-banner {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--gold-primary);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-shadow: 0 3px 6px rgba(0,0,0,0.5);
+    }
+
+    .subtitle {
+      color: var(--text-sub);
+      font-size: 0.95rem;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .rank-badge-display {
+      display: inline-block;
+      background: linear-gradient(135deg, #f1c40f, #e67e22);
+      color: #0d1b2a;
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-weight: 900;
+      font-size: 1.1rem;
+      margin: 15px 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .review-container {
+      max-height: 220px;
+      overflow-y: auto;
+      text-align: left;
+      margin: 20px 0;
+      padding-right: 5px;
+    }
+
+    .review-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .review-container::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+
+    .review-item {
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 4px solid var(--red-accent);
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+    }
+
+    .review-item.correct-item {
+      border-left-color: var(--green-accent);
+    }
+
+    .review-item .q-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .review-item .ans-info {
+      color: var(--text-sub);
+    }
+
+    /* Start Screen Specific */
+    .start-icon {
+      font-size: 4rem;
+      margin-bottom: 15px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <canvas id="effectsCanvas"></canvas>
+
+  <div id="startScreen" class="screen active">
+    <span class="start-icon">⚔️</span>
+    <div class="title-banner">PERLAWANAN PATTIMURA</div>
+    <div class="subtitle">Uji pengetahuan sejarahmu! Jawab 15 pertanyaan, dapatkan combo multiplier, dan raih pangkat tertinggi <b>Kapitan Utama</b>!</div>
+    <button class="action-btn" style="display: block;" onclick="startGame()">Mulai Perjuangan ➔</button>
+  </div>
+
+  <div id="quizScreen" class="screen">
+    <div class="hud-header">
+      <div class="stat-badge"><span class="lives-icon" id="livesDisplay">❤️❤️❤️</span></div>
+      <div class="stat-badge" style="color: var(--gold-primary);">
+        <span id="scoreDisplay">0</span> PTS
+      </div>
+      <div class="combo-badge" id="comboDisplay">1x COMBO</div>
+      <div class="stat-badge" style="color: var(--text-sub); font-size: 0.85rem;" id="progressDisplay">1/15</div>
+    </div>
+
+    <div class="progress-bar-container">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+
+    <!-- Lifelines -->
+    <div class="lifelines-container">
+      <button class="lifeline-btn" id="lifeline5050" onclick="useLifeline5050()">
+        <span>⚖️</span> 50:50
+      </button>
+      <button class="lifeline-btn" id="lifelineTime" onclick="useLifelineTime()">
+        <span>⏳</span> +10 Detik
+      </button>
+    </div>
+
+    <div class="question-box" id="questionText">Memuat pertanyaan...</div>
+    <div class="options-grid" id="optionsContainer"></div>
+
+    <button class="action-btn" id="nextBtn" onclick="nextQuestion()">Lanjut Soal Berikutnya ➔</button>
+  </div>
+
+  <div id="endScreen" class="screen">
+    <div class="title-banner" id="endTitle">PERTANTONGAN SELESAI</div>
+    <div id="rankDisplay" class="rank-badge-display">Pangkat: Prajurit</div>
+    
+    <div style="display: flex; justify-content: space-around; margin: 15px 0; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px;">
+      <div>
+        <div style="font-size: 0.8rem; color: var(--text-sub);">Skor Akhir</div>
+        <div style="font-size: 1.4rem; font-weight: 800; color: var(--gold-primary);" id="finalScore">0</div>
+      </div>
+      <div>
+        <div style="font-size: 0.8rem; color: var(--text-sub);">Akurasi</div>
+        <div style="font-size: 1.4rem; font-weight: 800; color: var(--green-accent);" id="accuracyDisplay">0%</div>
+      </div>
+    </div>
+
+    <div style="text-align: left; font-size: 0.9rem; font-weight: 700; margin-top: 15px; color: var(--gold-primary);">Evaluasi & Pembahasan:</div>
+    <div class="review-container" id="reviewContainer"></div>
+
+    <button class="action-btn" style="display: block;" onclick="restartGame()">🎮 Main Lagi</button>
+  </div>
+</div>
+
+<script>
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+      osc.frequency.setValueAtTime(400, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'correct') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now); // C5
+      osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+      osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.setValueAtTime(164.81, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'lifeline') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.linearRampToValueAtTime(600, now + 0.2);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else if (type === 'win') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.1);
+      osc.frequency.setValueAtTime(783.99, now + 0.2);
+      osc.frequency.setValueAtTime(1046.50, now + 0.3);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    }
+  }
+
+  const questions = [
+    {
+      q: "1. Apakah faktor utama penyebab perlawanan rakyat Maluku terhadap Belanda pada tahun 1817?",
+      options: ["Penetapan pajak kendaraan berkuda", "Sistem monopoli perdagangan & penyerahan hasil bumi", "Pembangunan benteng baru di Bali", "Kerja paksa pembuatan jalan raya"],
+      answer: 1,
+      explain: "Monopoli rempah-rempah & kewajiban penyerahan hasil bumi secara murah sangat menyengsarakan rakyat Maluku."
+    },
+    {
+      q: "2. Siapakah nama asli pahlawan nasional yang memimpin perlawanan rakyat Maluku (Kapitan Pattimura)?",
+      options: ["Sultan Nuku", "Thomas Matulessy", "Tuanku Imam Bonjol", "Pangeran Antasari"],
+      answer: 1,
+      explain: "Nama asli Kapitan Pattimura adalah Thomas Matulessy, lahir di Haria, Saparua."
+    },
+    {
+      q: "3. Benteng pertahanan milik Belanda di Saparua yang berhasil direbut oleh pasukan Pattimura adalah...",
+      options: ["Benteng Duurstede", "Benteng Rotterdam", "Benteng Vredeburg", "Benteng Marlborough"],
+      answer: 0,
+      explain: "Benteng Duurstede di Saparua berhasil dikuasai rakyat Maluku pada Mei 1817."
+    },
+    {
+      q: "4. Srikandi atau pahlawan wanita muda yang gigih bertempur di samping Pattimura bernama...",
+      options: ["Cut Nyak Dien", "Dewi Sartika", "Christina Martha Tiahahu", "R.A. Kartini"],
+      answer: 2,
+      explain: "Christina Martha Tiahahu berjuang gigih sejak usia 17 tahun mendampingi Pattimura."
+    },
+    {
+      q: "5. Perwira Belanda yang tewas saat Benteng Duurstede direbut oleh pasukan rakyat Maluku adalah...",
+      options: ["Jenderal De Kock", "Residen Van den Berg", "Gubernur Van den Bosch", "Raffles"],
+      answer: 1,
+      explain: "Residen Van den Berg tewas dalam pertempuran sengit merebut Benteng Duurstede."
+    },
+    {
+      q: "6. Senjata tradisional khas Maluku yang banyak digunakan pasukan Pattimura saat pertempuran adalah...",
+      options: ["Keris Pasupati", "Parang Salawaku", "Rencong", "Mandau"],
+      answer: 1,
+      explain: "Parang Salawaku (pedang dan perisai) merupakan senjata tradisional pertempuran khas Maluku."
+    },
+    {
+      q: "7. Pada tanggal berapakah Kapitan Pattimura dieksekusi hukuman mati oleh Belanda?",
+      options: ["17 Agustus 1945", "16 Desember 1817", "10 November 1928", "20 Mei 1908"],
+      answer: 1,
+      explain: "Pattimura dijatuhi hukuman gantung oleh VOC/Belanda pada 16 Desember 1817."
+    },
+    {
+      q: "8. Di lokasi manakah eksekusi hukuman gantung Kapitan Pattimura dilaksanakan?",
+      options: ["Benteng Victoria, Ambon", "Benteng Duurstede, Saparua", "Batavia", "Makassar"],
+      answer: 0,
+      explain: "Eksekusi hukuman gantung Pattimura dilakukan di depan Benteng Victoria, Kota Ambon."
+    },
+    {
+      q: "9. Kebijakan pelayaran ronda malam menggunakan perahu perahu kora-kora oleh Belanda di Maluku disebut...",
+      options: ["Pelayaran Hongi", "Hak Ekstirpasi", "Cultuurstelsel", "Devide et Impera"],
+      answer: 0,
+      explain: "Pelayaran Hongi dilaksanakan Belanda untuk mengawasi perdagangan monopoli rempah-rempah."
+    },
+    {
+      q: "10. Hak VOC/Belanda untuk memusnahkan pohon rempah-rempah yang berlebihan agar harga tetap tinggi adalah...",
+      options: ["Hak Ekstirpasi", "Hak Octrooi", "Hak Verplichte Leverantie", "Contingenten"],
+      answer: 0,
+      explain: "Hak Ekstirpasi memberikan wewenang memotong tanaman rempah berlebih demi menjaga harga monopoli."
+    },
+    {
+      q: "11. Pahlawan agung dari Tidore yang dikenal cerdik dan berhasil mengusir kolonial dari Maluku Utara adalah...",
+      options: ["Sultan Nuku", "Sultan Baabullah", "Sultan Hasanuddin", "Kapitan Pattimura"],
+      answer: 0,
+      explain: "Sultan Nuku adalah pemimpin berani dari Tidore yang berhasil menyatukan wilayah Maluku Utara."
+    },
+    {
+      q: "12. Nilai utama dari perjuangan Pattimura yang patut dicontoh oleh generasi muda adalah...",
+      options: ["Berani melawan ketidakadilan dan rela berkorban", "Individualisme tinggi", "Suka bermusuhan", "Mudah menyerah saat gagal"],
+      answer: 0,
+      explain: "Semangat rela berkorban, pantang menyerah, dan membela keadilan adalah warisan nilai Pattimura."
+    },
+    {
+      q: "13. Benteng pertahanan utama milik Belanda di pusat Kota Ambon dinamakan...",
+      options: ["Benteng Victoria", "Benteng Marlborough", "Benteng Belgica", "Benteng Oranje"],
+      answer: 0,
+      explain: "Benteng Victoria merupakan markas pusat militer kolonial Belanda di Pulau Ambon."
+    },
+    {
+      q: "14. Mengapa rakyat Maluku membakar dan merusak Benteng Duurstede setelah menguasainya?",
+      options: ["Menghancurkan pusat pertahanan & simbol monopoli Belanda", "Ketidaksengajaan pasukan", "Disuruh oleh pihak luar", "Hanya untuk hiburan"], answer: 0,
+      explain: "Penghancuran benteng ditujukan untuk melemahkan pangkalan militer kolonial Belanda di Saparua."
+    },
+    {
+      q: "15. Gelar 'Kapitan' disematkan rakyat Maluku kepada Thomas Matulessy karena...",
+      options: ["Gelar kehormatan atas kepemimpinan & kepercayaan rakyat", "Pemberian resmi dari Raja Belanda", "Warisan keturunan raja", "Gelar dari pedagang asing"],
+      answer: 0,
+      explain: "Gelar 'Kapitan' adalah bentuk kepercayaan dan pengakuan keahlian militer rakyat Maluku kepada Thomas Matulessy."
+    }
+  ];
+
+  let currentIdx = 0;
+  let score = 0;
+  let lives = 3;
+  let combo = 0;
+  let maxCombo = 0;
+  let timeLeft = 15;
+  let timerInterval = null;
+  let userAnswers = [];
+  let lifeline5050Used = false;
+  let lifelineTimeUsed = false;
+
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  function startGame() {
+    playSound('click');
+    currentIdx = 0;
+    score = 0;
+    lives = 3;
+    combo = 0;
+    maxCombo = 0;
+    userAnswers = [];
+    lifeline5050Used = false;
+    lifelineTimeUsed = false;
+
+    document.getElementById('lifeline5050').disabled = false;
+    document.getElementById('lifelineTime').disabled = false;
+    
+    updateHUD();
+    showScreen('quizScreen');
+    loadQuestion();
+  }
+
+  function updateHUD() {
+    // Update Lives
+    let hearts = "";
+    for (let i = 0; i < lives; i++) hearts += "❤️";
+    document.getElementById('livesDisplay').innerText = hearts || "💀";
+
+    // Update Score & Progress
+    document.getElementById('scoreDisplay').innerText = score;
+    document.getElementById('progressDisplay').innerText = `${currentIdx + 1}/${questions.length}`;
+
+    // Update Combo Meter
+    const comboBadge = document.getElementById('comboDisplay');
+    if (combo >= 2) {
+      comboBadge.style.display = 'block';
+      let multiplier = combo >= 5 ? '3x' : combo >= 3 ? '2x' : '1.5x';
+      comboBadge.innerText = `${multiplier} COMBO 🔥`;
+    } else {
+      comboBadge.style.display = 'none';
+    }
+  }
+
+  function startTimer() {
+    timeLeft = 15;
+    const fill = document.getElementById('timerFill');
+    fill.style.width = '100%';
+    fill.style.backgroundColor = 'var(--green-accent)';
+    clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+      timeLeft -= 0.1;
+      let pct = (timeLeft / 15) * 100;
+      fill.style.width = Math.max(0, pct) + '%';
+
+      if (pct < 35) {
+        fill.style.backgroundColor = 'var(--red-accent)';
+      } else if (pct < 65) {
+        fill.style.backgroundColor = 'var(--gold-primary)';
+      }
+
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        handleTimeout();
+      }
+    }, 100);
+  }
+
+  function loadQuestion() {
+    if (lives <= 0 || currentIdx >= questions.length) {
+      endGame();
+      return;
+    }
+
+    startTimer();
+    updateHUD();
+
+    const qData = questions[currentIdx];
+    document.getElementById('questionText').innerText = qData.q;
+    document.getElementById('nextBtn').style.display = 'none';
+
+    const optsContainer = document.getElementById('optionsContainer');
+    optsContainer.innerHTML = '';
+
+    qData.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-option';
+      btn.innerText = opt;
+      btn.onclick = () => selectAnswer(btn, idx);
+      optsContainer.appendChild(btn);
+    });
+  }
+
+  function useLifeline5050() {
+    if (lifeline5050Used) return;
+    playSound('lifeline');
+    lifeline5050Used = true;
+    document.getElementById('lifeline5050').disabled = true;
+
+    const qData = questions[currentIdx];
+    const correctIdx = qData.answer;
+    const btns = document.querySelectorAll('.btn-option');
+    
+    let wrongIndices = [];
+    btns.forEach((_, idx) => {
+      if (idx !== correctIdx) wrongIndices.push(idx);
+    });
+
+    // Randomly select 2 wrong options to hide
+    wrongIndices.sort(() => Math.random() - 0.5);
+    btns[wrongIndices[0]].style.opacity = '0.2';
+    btns[wrongIndices[0]].disabled = true;
+    btns[wrongIndices[1]].style.opacity = '0.2';
+    btns[wrongIndices[1]].disabled = true;
+  }
+
+  function useLifelineTime() {
+    if (lifelineTimeUsed) return;
+    playSound('lifeline');
+    lifelineTimeUsed = true;
+    document.getElementById('lifelineTime').disabled = true;
+    timeLeft = Math.min(15, timeLeft + 10);
+  }
+
+  function selectAnswer(btn, selectedIdx) {
+    clearInterval(timerInterval);
+    playSound('click');
+
+    const qData = questions[currentIdx];
+    const correctIdx = qData.answer;
+    const allBtns = document.querySelectorAll('.btn-option');
+
+    allBtns.forEach(b => b.disabled = true);
+
+    const isCorrect = (selectedIdx === correctIdx);
+    userAnswers.push({
+      question: qData.q,
+      userAns: selectedIdx >= 0 ? qData.options[selectedIdx] : "Kehabisan Waktu",
+      correctAns: qData.options[correctIdx],
+      isCorrect: isCorrect,
+      explain: qData.explain
+    });
+
+    if (isCorrect) {
+      btn.classList.add('correct');
+      playSound('correct');
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+
+      let multiplier = combo >= 5 ? 3 : combo >= 3 ? 2 : combo >= 2 ? 1.5 : 1;
+      score += Math.round(100 * multiplier);
+    } else {
+      if (selectedIdx >= 0) btn.classList.add('wrong');
+      allBtns[correctIdx].classList.add('correct');
+      playSound('wrong');
+      combo = 0;
+      lives--;
+    }
+
+    updateHUD();
+    document.getElementById('nextBtn').style.display = 'block';
+  }
+
+  function handleTimeout() {
+    selectAnswer(null, -1);
+  }
+
+  function nextQuestion() {
+    playSound('click');
+    currentIdx++;
+    if (currentIdx < questions.length && lives > 0) {
+      loadQuestion();
+    } else {
+      endGame();
+    }
+  }
+
+  function endGame() {
+    clearInterval(timerInterval);
+    showScreen('endScreen');
+
+    const isWin = lives > 0;
+    const accuracy = Math.round((userAnswers.filter(a => a.isCorrect).length / questions.length) * 100);
+
+    document.getElementById('endTitle').innerText = isWin ? "KEMENANGAN JUANG! 🎉" : "PERJUANGAN TERHENTI 💥";
+    document.getElementById('finalScore').innerText = score;
+    document.getElementById('accuracyDisplay').innerText = `${accuracy}%`;
+
+    // Determine Military Rank Title
+    let rankTitle = "Prajurit Pejuang";
+    if (accuracy >= 90) rankTitle = "Kapitan Utama (Pahlawan)";
+    else if (accuracy >= 70) rankTitle = "Perwira Maluku";
+    else if (accuracy >= 50) rankTitle = "Sersan Saparua";
+
+    document.getElementById('rankDisplay').innerText = `Pangkat: ${rankTitle}`;
+
+    // Populate Review List
+    const reviewBox = document.getElementById('reviewContainer');
+    reviewBox.innerHTML = '';
+
+    userAnswers.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = `review-item ${item.isCorrect ? 'correct-item' : ''}`;
+      div.innerHTML = `
+        <div class="q-title">${i + 1}. ${item.question}</div>
+        <div class="ans-info">Jawabanmu: <span style="color: ${item.isCorrect ? 'var(--green-accent)' : 'var(--red-accent)'}">${item.userAns}</span></div>
+        ${!item.isCorrect ? `<div class="ans-info">Jawaban Benar: <b style="color: var(--green-accent)">${item.correctAns}</b></div>` : ''}
+        <div style="font-size: 0.8rem; margin-top: 4px; color: var(--gold-primary);">💡 ${item.explain}</div>
+      `;
+      reviewBox.appendChild(div);
+    });
+
+    if (isWin) {
+      playSound('win');
+      triggerFireworks();
+    }
+  }
+
+  function restartGame() {
+    startGame();
+  }
+
+  function triggerFireworks() {
+    const canvas = document.getElementById('effectsCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    let particles = [];
+    const colors = ['#f1c40f', '#e74c3c', '#2ecc71', '#3498db', '#ffffff'];
+
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        size: Math.random() * 4 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        alpha: 1
+      });
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.02;
+
+        if (p.alpha > 0) {
+          alive = true;
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      if (alive) requestAnimationFrame(animate);
+    }
+    animate();
+  }
+</script>
+
+</body>
+</html>
